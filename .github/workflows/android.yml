@@ -16,19 +16,31 @@ jobs:
       - name: Extract project
         run: unzip -q LuckyTapPH.zip
 
-      - name: Force Clean Plugin Versions in App Gradle
+      - name: Force Fix Plugins Block in App
         run: |
           python3 -c "
           path = 'LuckyTapPH/app/build.gradle.kts'
           with open(path, 'r') as f:
-              content = f.read()
-          # Tanggalin ang kahit anong version sa plugins block ng app module
-          import re
-          content = re.sub(r'id\(([\"\'])org\.jetbrains\.kotlin\.kapt([\"\'])\)\s+version\s+[\"\'][^\"\']+[\"\']', r'id(\1org.jetbrains.kotlin.kapt\2)', content)
-          content = re.sub(r'id\(([\"\'])org\.jetbrains\.kotlin\.android([\"\'])\)\s+version\s+[\"\'][^\"\']+[\"\']', r'id(\1org.jetbrains.kotlin.android\2)', content)
-          content = re.sub(r'id\(([\"\'])com\.android\.application([\"\'])\)\s+version\s+[\"\'][^\"\']+[\"\']', r'id(\1com.android.application\2)', content)
+              lines = f.readlines()
+          
+          # Tanggalin ang buong plugins block para walang conflict
+          new_lines = []
+          in_plugins = False
+          for line in lines:
+              if 'plugins {' in line:
+                  in_plugins = True
+                  continue
+              if in_plugins and '}' in line:
+                  in_plugins = False
+                  continue
+              if not in_plugins:
+                  new_lines.append(line)
+          
+          # Idagdag ang apply plugin sa pinakataas
+          header = 'apply(plugin = \"com.android.application\")\napply(plugin = \"org.jetbrains.kotlin.android\")\napply(plugin = \"org.jetbrains.kotlin.kapt\")\n\n'
+          
           with open(path, 'w') as f:
-              f.write(content)
+              f.write(header + ''.join(new_lines))
           "
 
       - name: Set up JDK 17
