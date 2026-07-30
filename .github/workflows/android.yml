@@ -16,19 +16,26 @@ jobs:
       - name: Extract project
         run: unzip -q LuckyTapPH.zip
 
-      - name: Clean Plugin Versions safely
+      - name: Replace KAPT line cleanly
         run: |
           python3 -c "
           path = 'LuckyTapPH/app/build.gradle.kts'
           with open(path, 'r') as f:
-              text = f.read()
+              lines = f.readlines()
           
-          # Tanggalin lang ang 'version ...' sa loob ng plugins block
-          import re
-          text = re.sub(r'version\s+[\"\'][^\"\']+[\"\']', '', text)
+          new_lines = []
+          for line in lines:
+              if 'kotlin.kapt' in line:
+                  new_lines.append('    id(\"org.jetbrains.kotlin.kapt\")\n')
+              elif 'kotlin.android' in line:
+                  new_lines.append('    id(\"org.jetbrains.kotlin.android\")\n')
+              elif 'android.application' in line:
+                  new_lines.append('    id(\"com.android.application\")\n')
+              else:
+                  new_lines.append(line)
           
           with open(path, 'w') as f:
-              f.write(text)
+              f.writelines(new_lines)
           "
 
       - name: Set up JDK 17
