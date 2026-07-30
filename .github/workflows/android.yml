@@ -22,9 +22,9 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Generate Gradle Wrapper
+      - name: Generate Updated Gradle Wrapper
         working-directory: ./LuckyTapPH
-        run: gradle wrapper
+        run: gradle wrapper --gradle-version 8.2
 
       - name: Build Debug APK
         working-directory: ./LuckyTapPH
@@ -34,6 +34,9 @@ jobs:
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
+        with:
+          name: LuckyTapPH-debug
+          path: LuckyTapPH/app/build/outputs/apk/debug/*.apk
         with:
           name: LuckyTapPH-debug
           path: LuckyTapPH/app/build/outputs/apk/debug/*.apk
