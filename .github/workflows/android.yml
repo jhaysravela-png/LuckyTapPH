@@ -16,6 +16,11 @@ jobs:
       - name: Extract project
         run: unzip -q LuckyTapPH.zip
 
+      - name: Auto-fix KAPT and Plugin Versions
+        run: |
+          find LuckyTapPH/ -name "build.gradle.kts" -exec sed -i 's/version "1.9.22"//g' {} +
+          find LuckyTapPH/ -name "build.gradle.kts" -exec sed -i "s/version '1.9.22'//g" {} +
+
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
