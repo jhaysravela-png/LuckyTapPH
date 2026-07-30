@@ -11,10 +11,26 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install unzip and gradle
-        run: sudo apt-get update && sudo apt-get install -y unzip gradle
+        run: sudo apt-get update && sudo apt-get install -y unzip gradle python3
 
       - name: Extract project
         run: unzip -q LuckyTapPH_Fixed.zip
+
+      - name: Force Clean Plugin Versions
+        run: |
+          python3 -c "
+          import re
+          path = 'LuckyTapPH/app/build.gradle.kts'
+          with open(path, 'r') as f:
+              content = f.read()
+          
+          # Tatanggalin ang version '...' o version(...) sa kahit anong plugin line
+          cleaned = re.sub(r'version\s+[\"\'][^\"\']+[\"\']', '', content)
+          cleaned = re.sub(r'version\s*\([^\)]*\)', '', cleaned)
+          
+          with open(path, 'w') as f:
+              f.write(cleaned)
+          "
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
