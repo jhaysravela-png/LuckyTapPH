@@ -11,15 +11,25 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install unzip and gradle
-        run: sudo apt-get update && sudo apt-get install -y unzip gradle
+        run: sudo apt-get update && sudo apt-get install -y unzip gradle python3
 
       - name: Extract project
         run: unzip -q LuckyTapPH.zip
 
-      - name: Auto-fix KAPT and Plugin Versions
+      - name: Force Clean Plugin Versions in App Gradle
         run: |
-          find LuckyTapPH/ -name "build.gradle.kts" -exec sed -i 's/version "1.9.22"//g' {} +
-          find LuckyTapPH/ -name "build.gradle.kts" -exec sed -i "s/version '1.9.22'//g" {} +
+          python3 -c "
+          path = 'LuckyTapPH/app/build.gradle.kts'
+          with open(path, 'r') as f:
+              content = f.read()
+          # Tanggalin ang kahit anong version sa plugins block ng app module
+          import re
+          content = re.sub(r'id\(([\"\'])org\.jetbrains\.kotlin\.kapt([\"\'])\)\s+version\s+[\"\'][^\"\']+[\"\']', r'id(\1org.jetbrains.kotlin.kapt\2)', content)
+          content = re.sub(r'id\(([\"\'])org\.jetbrains\.kotlin\.android([\"\'])\)\s+version\s+[\"\'][^\"\']+[\"\']', r'id(\1org.jetbrains.kotlin.android\2)', content)
+          content = re.sub(r'id\(([\"\'])com\.android\.application([\"\'])\)\s+version\s+[\"\'][^\"\']+[\"\']', r'id(\1com.android.application\2)', content)
+          with open(path, 'w') as f:
+              f.write(content)
+          "
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
