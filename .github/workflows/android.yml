@@ -37,12 +37,3 @@ jobs:
         with:
           name: LuckyTapPH-debug
           path: LuckyTapPH/app/build/outputs/apk/debug/*.apk
-        with:
-          name: LuckyTapPH-debug
-          path: LuckyTapPH/app/build/outputs/apk/debug/*.apk
-        with:
-          name: LuckyTapPH-debug
-          path: LuckyTapPH/app/build/outputs/apk/debug/*.apk
-        with:
-          name: LuckyTapPH-debug
-          path: LuckyTapPH/app/build/outputs/apk/debug/*.apk
