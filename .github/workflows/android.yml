@@ -6,33 +6,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Unzip new game
-        run: |
-          ls -la
-          if [ -f "CoinTapGame.zip" ]; then
-            unzip -o CoinTapGame.zip
-          fi
-          if [ -f "project.zip" ]; then
-            unzip -o project.zip
-          fi
-          ls -la
-          ls -la app/
-
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
-        with:
-          gradle-version: 8.7
-
       - name: Build APK
         run: |
-          chmod +x gradlew
-          gradle assembleDebug --stacktrace
+          ls -la
+          ls -la app/
+          gradle assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
