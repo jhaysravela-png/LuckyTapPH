@@ -13,19 +13,33 @@ jobs:
             unzip -o project.zip
           fi
 
-      - name: Auto-Fix Kotlin Compose Version
+      - name: Auto-Fix Compile SDK & Compose Version
         run: |
           python3 -c "
-          import glob, re
+          import glob, re, os
+
+          # 1. Ayusin ang Compose version sa 1.5.10
           files = glob.glob('**/app/build.gradle.kts', recursive=True) + glob.glob('**/app/build.gradle', recursive=True)
           for f_path in files:
               print(f'Fixing Compose version in: {f_path}')
               with open(f_path, 'r') as f:
                   content = f.read()
-              # Baguhin ang kotlinCompilerExtensionVersion sa 1.5.10 (match sa Kotlin 1.9.22)
               fixed = re.sub(r'kotlinCompilerExtensionVersion\s*=\s*[\"\'\"][^\"\'\"]+[\"\'\"]', 'kotlinCompilerExtensionVersion = \"1.5.10\"', content)
               with open(f_path, 'w') as f:
                   f.write(fixed)
+
+          # 2. Idagdag ang suppress warning sa gradle.properties
+          prop_files = glob.glob('**/gradle.properties', recursive=True)
+          if prop_files:
+              for p_path in prop_files:
+                  print(f'Updating properties in: {p_path}')
+                  with open(p_path, 'a') as f:
+                      f.write('\nandroid.suppressUnsupportedCompileSdk=35\n')
+          else:
+              # Pag walang gradle.properties, gagawa tayo
+              print('Creating gradle.properties')
+              with open('gradle.properties', 'w') as f:
+                  f.write('android.suppressUnsupportedCompileSdk=35\n')
           "
 
       - name: Auto-Detect Project Directory
