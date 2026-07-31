@@ -1,19 +1,23 @@
-                  name: build
+name: build
 on: [push, workflow_dispatch]
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
-      - name: REBUILD ENTIRE PROJECT FROM SCRATCH
-        run: |
-          rm -rf app build.gradle.kts settings.gradle.kts gradle.properties gradlew gradlew.bat gradle
-          mkdir -p app/src/main/java/com/jayson/cointap
-          mkdir -p app/src/main/res/layout
-          mkdir -p gradle/wrapper
 
-          cat > settings.gradle.kts << 'EOF'
+      - name: Generate Complete Android Project Structure
+        run: |
+          python3 -c "
+          import os, shutil, glob, re
+
+          # 1. Create standard Android directory tree
+          os.makedirs('app/src/main/java/com/LuckyTapPH/ph', exist_ok=True)
+          os.makedirs('app/src/main/res/layout', exist_ok=True)
+
+          # 2. Setup settings.gradle.kts with Plugin Repositories
+          settings_content = '''
           pluginManagement {
               repositories {
                   google()
@@ -28,120 +32,102 @@ jobs:
                   mavenCentral()
               }
           }
-          include(":app")
-          EOF
+          rootProject.name = \"LuckyTapPH\"
+          include(\":app\")
+          '''
+          with open('settings.gradle.kts', 'w') as f:
+              f.write(settings_content)
 
-          cat > build.gradle.kts << 'EOF'
+          # 3. Setup Root build.gradle.kts
+          root_build = '''
           plugins {
-              id("com.android.application") version "8.2.2" apply false
-              id("org.jetbrains.kotlin.android") version "1.9.22" apply false
+              id(\"com.android.application\") version \"8.5.2\" apply false
+              id(\"org.jetbrains.kotlin.android\") version \"1.9.22\" apply false
           }
-          EOF
+          '''
+          with open('build.gradle.kts', 'w') as f:
+              f.write(root_build)
 
-          cat > gradle.properties << 'EOF'
-          org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
-          android.useAndroidX=true
-          android.suppressUnsupportedCompileSdk=35
-          EOF
-
-          cat > gradle/wrapper/gradle-wrapper.properties << 'EOF'
-          distributionBase=GRADLE_USER_HOME
-          distributionPath=wrapper/dists
-          distributionUrl=https\://services.gradle.org/distributions/gradle-8.7-bin.zip
-          zipStoreBase=GRADLE_USER_HOME
-          zipStorePath=wrapper/dists
-          EOF
-
-          cat > app/build.gradle.kts << 'EOF'
+          # 4. Setup app/build.gradle.kts
+          app_build = '''
           plugins {
-              id("com.android.application")
-              id("org.jetbrains.kotlin.android")
+              id(\"com.android.application\")
+              id(\"org.jetbrains.kotlin.android\")
           }
+
           android {
-              namespace = "com.jayson.cointap"
+              namespace = \"com.LuckyTapPH.ph\"
               compileSdk = 34
+
               defaultConfig {
-                  applicationId = "com.jayson.cointap"
+                  applicationId = \"com.LuckyTapPH.ph\"
                   minSdk = 24
                   targetSdk = 34
                   versionCode = 1
-                  versionName = "1.0"
+                  versionName = \"1.0\"
               }
+
               buildTypes {
-                  release { isMinifyEnabled = false }
+                  release {
+                      isMinifyEnabled = false
+                  }
               }
+
               compileOptions {
                   sourceCompatibility = JavaVersion.VERSION_17
                   targetCompatibility = JavaVersion.VERSION_17
               }
-              kotlinOptions { jvmTarget = "17" }
+              kotlinOptions {
+                  jvmTarget = \"17\"
+              }
+              buildFeatures {
+                  compose = true
+              }
+              composeOptions {
+                  kotlinCompilerExtensionVersion = \"1.5.10\"
+              }
           }
+
           dependencies {
-              implementation("androidx.appcompat:appcompat:1.6.1")
-              implementation("androidx.core:core-ktx:1.12.0")
+              implementation(\"androidx.core:core-ktx:1.12.0\")
+              implementation(\"androidx.lifecycle:lifecycle-runtime-ktx:2.7.0\")
+              implementation(\"androidx.activity:activity-compose:1.8.2\")
+              implementation(platform(\"androidx.compose:compose-bom:2023.08.00\"))
+              implementation(\"androidx.compose.ui:ui\")
+              implementation(\"androidx.compose.ui:ui-graphics\")
+              implementation(\"androidx.compose.ui:ui-tooling-preview\")
+              implementation(\"androidx.compose.material3:material3\")
           }
-          EOF
+          '''
+          with open('app/build.gradle.kts', 'w') as f:
+              f.write(app_build)
 
-          cat > app/src/main/AndroidManifest.xml << 'EOF'
-          <?xml version="1.0" encoding="utf-8"?>
-          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-              <application android:allowBackup="true" android:label="CoinTap" android:theme="@android:style/Theme.NoTitleBar">
-                  <activity android:name=".MainActivity" android:exported="true" android:screenOrientation="portrait">
-                      <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
-                  </activity>
-              </application>
-          </manifest>
-          EOF
+          # 5. Move code files to proper places
+          if os.path.exists('AndroidManifest.xml'):
+              shutil.move('AndroidManifest.xml', 'app/src/main/AndroidManifest.xml')
 
-          cat > app/src/main/java/com/jayson/cointap/MainActivity.kt << 'EOF'
-          package com.jayson.cointap
-          import android.os.Bundle
-          import android.os.CountDownTimer
-          import android.widget.Button
-          import android.widget.TextView
-          import androidx.appcompat.app.AppCompatActivity
-          class MainActivity : AppCompatActivity() {
-              var coins = 0
-              var timeLeft = 30
-              var playing = false
-              lateinit var timer: CountDownTimer
-              override fun onCreate(savedInstanceState: Bundle?) {
-                  super.onCreate(savedInstanceState)
-                  setContentView(R.layout.activity_main)
-                  val tapBtn = findViewById<Button>(R.id.tapBtn)
-                  val scoreTxt = findViewById<TextView>(R.id.scoreTxt)
-                  val timeTxt = findViewById<TextView>(R.id.timeTxt)
-                  val msgTxt = findViewById<TextView>(R.id.msgTxt)
-                  tapBtn.setOnClickListener {
-                      if (!playing) {
-                          playing = true
-                          coins = 0
-                          timeLeft = 30
-                          timer = object: CountDownTimer(30000, 1000) {
-                              override fun onTick(m: Long) { timeLeft--; timeTxt.text = "Time: $timeLeft" }
-                              override fun onFinish() { playing = false; msgTxt.text = "Game Over! Coins: $coins"; timeTxt.text = "Time: 0" }
-                          }.start()
-                      }
-                      if (playing) { coins++; scoreTxt.text = "Coins: $coins" }
-                  }
-              }
-          }
-          EOF
+          if os.path.exists('MainActivity.kt'):
+              shutil.move('MainActivity.kt', 'app/src/main/java/com/LuckyTapPH/ph/MainActivity.kt')
 
-          cat > app/src/main/res/layout/activity_main.xml << 'EOF'
-          <?xml version="1.0" encoding="utf-8"?>
-          <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-              android:orientation="vertical" android:gravity="center"
-              android:layout_width="match_parent" android:layout_height="match_parent"
-              android:background="#FFF9C4" android:padding="20dp">
-              <TextView android:id="@+id/timeTxt" android:text="Time: 30" android:textSize="24sp" android:textStyle="bold" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
-              <TextView android:id="@+id/scoreTxt" android:text="Coins: 0" android:textSize="28sp" android:textStyle="bold" android:layout_marginTop="10dp" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
-              <TextView android:id="@+id/msgTxt" android:text="Tap to Start!" android:textSize="18sp" android:layout_marginTop="10dp" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
-              <Button android:id="@+id/tapBtn" android:text="TAP COIN!" android:textSize="30sp" android:layout_width="300dp" android:layout_height="300dp" android:layout_marginTop="40dp" android:backgroundTint="#FFD700"/>
-          </LinearLayout>
-          EOF
+          if os.path.exists('activity_main.xml'):
+              shutil.move('activity_main.xml', 'app/src/main/res/layout/activity_main.xml')
 
-          ls -R
+          # 6. Patch MainActivity.kt for tapsVal missing declaration
+          kt_files = glob.glob('**/MainActivity.kt', recursive=True)
+          for kt in kt_files:
+              with open(kt, 'r') as f:
+                  code = f.read()
+              if 'tapsVal' in code and 'val tapsVal' not in code and 'var tapsVal' not in code:
+                  code = re.sub(r'(class MainActivity[^{]*\{)', r'\1\n    var tapsVal: Int = 0', code)
+              with open(kt, 'w') as f:
+                  f.write(code)
+
+          # 7. Configure gradle.properties
+          with open('gradle.properties', 'w') as f:
+              f.write('android.useAndroidX=true\nandroid.suppressUnsupportedCompileSdk=35\n')
+
+          print('Project fully restructured and configured!')
+          "
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -154,54 +140,14 @@ jobs:
         with:
           gradle-version: 8.7
 
-      - name: Build APK
-        run: gradle assembleDebug --stacktrace
+      - name: Generate Wrapper & Build APK
+        run: |
+          gradle wrapper --gradle-version 8.7
+          chmod +x gradlew
+          ./gradlew assembleDebug --stacktrace --no-daemon
 
       - name: Upload APK
-        uses: actions/upload-art
-                      if (!playing) {
-                          playing = true
-                          coins = 0
-                          timeLeft = 30
-                          timer = object: CountDownTimer(30000, 1000) {
-                              override fun onTick(m: Long) { timeLeft--; timeTxt.text = "Time: $timeLeft" }
-                              override fun onFinish() { playing = false; msgTxt.text = "Game Over! Coins: $coins"; timeTxt.text = "Time: 0" }
-                          }.start()
-                      }
-                      if (playing) { coins++; scoreTxt.text = "Coins: $coins" }
-                  }
-              }
-          }
-          EOF
-
-          cat > app/src/main/res/layout/activity_main.xml << 'EOF'
-          <?xml version="1.0" encoding="utf-8"?>
-          <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-              android:orientation="vertical" android:gravity="center"
-              android:layout_width="match_parent" android:layout_height="match_parent"
-              android:background="#FFF9C4" android:padding="20dp">
-              <TextView android:id="@+id/timeTxt" android:text="Time: 30" android:textSize="24sp" android:textStyle="bold" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
-              <TextView android:id="@+id/scoreTxt" android:text="Coins: 0" android:textSize="28sp" android:textStyle="bold" android:layout_marginTop="10dp" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
-              <TextView android:id="@+id/msgTxt" android:text="Tap to Start!" android:textSize="18sp" android:layout_marginTop="10dp" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
-              <Button android:id="@+id/tapBtn" android:text="TAP COIN!" android:textSize="30sp" android:layout_width="300dp" android:layout_height="300dp" android:layout_marginTop="40dp" android:backgroundTint="#FFD700"/>
-          </LinearLayout>
-          EOF
-
-          ls -R
-
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/upload-artifact@v4
         with:
-          java-version: '17'
-          distribution: 'temurin'
-
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
-        with:
-          gradle-version: 8.7
-
-      - name: Build APK
-        run: gradle assembleDebug --stacktrace
-
-      - name: Upload APK
-        uses: actions/upload-art
+          name: LuckyTapPH-APK
+          path: "app/build/outputs/apk/debug/*.apk"
