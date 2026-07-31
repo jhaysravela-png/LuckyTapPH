@@ -54,11 +54,11 @@ jobs:
           cd ${{ env.PROJECT_DIR }}
           gradle wrapper --gradle-version 8.7
 
-      - name: Build Debug APK
+      - name: Build Debug APK with Detailed Logs
         run: |
           cd ${{ env.PROJECT_DIR }}
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+          ./gradlew assembleDebug --no-daemon --stacktrace --info
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
