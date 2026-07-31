@@ -1,35 +1,30 @@
 name: build
 on: [push, workflow_dispatch]
-
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - name: Unzip project if needed
         run: |
+          ls -la
           if [ -f "project.zip" ]; then
             unzip -o project.zip
           fi
-
+          ls -la
       - name: Auto-Patch Code and Config Errors
         run: |
           python3 -c "
           import glob, re
-
-          # 1. Patch MainActivity.kt (Aayusin ang tapsVal error)
           kt_files = glob.glob('**/MainActivity.kt', recursive=True)
           for kt in kt_files:
               print(f'Patching: {kt}')
               with open(kt, 'r') as f:
                   code = f.read()
-              if 'tapsVal' in code and 'val tapsVal' not in code and 'var tapsVal' not in code:
+              if 'tapsVal' in code and 'tapsVal' not in code.split('val ') and 'tapsVal' not in code.split('var '):
                   code = re.sub(r'(class MainActivity[^{]*\{)', r'\1\n    var tapsVal: Int = 0', code)
               with open(kt, 'w') as f:
                   f.write(code)
-
-          # 2. Patch Compose Version sa 1.5.10
           gradle_files = glob.glob('**/app/build.gradle.kts', recursive=True) + glob.glob('**/app/build.gradle', recursive=True)
           for f_path in gradle_files:
               with open(f_path, 'r') as f:
@@ -37,8 +32,6 @@ jobs:
               fixed = re.sub(r'kotlinCompilerExtensionVersion\s*=\s*[\"\'\"][^\"\'\"]+[\"\'\"]', 'kotlinCompilerExtensionVersion = \"1.5.10\"', content)
               with open(f_path, 'w') as f:
                   f.write(fixed)
-
-          # 3. Suppress Compile SDK 35 Warning
           prop_files = glob.glob('**/gradle.properties', recursive=True)
           if prop_files:
               for p_path in prop_files:
@@ -48,41 +41,25 @@ jobs:
               with open('gradle.properties', 'w') as f:
                   f.write('android.suppressUnsupportedCompileSdk=35\n')
           "
-
-      - name: Auto-Detect Project Directory and Fix Wrapper
+      - name: Auto-Detect Project Directory
         run: |
-          # Hanapin kung nasaan ang app folder o build.gradle
-          BUILD_FILE=$(find . -name "build.gradle" -o -name "build.gradle.kts" | head -n 1)
-          PROJECT_DIR=$(dirname $(dirname "$BUILD_FILE"))
-          
-          if [ -z "$PROJECT_DIR" ] || [ "$PROJECT_DIR" = "." ]; then
-            PROJECT_DIR="."
-          fi
-
-          echo "PROJECT_DIR=$PROJECT_DIR" >> $GITHUB_ENV
-          echo "Target Project Directory: $PROJECT_DIR"
-
-          # Sisiguraduhing kumpleto ang Gradle Wrapper sa tamang folder
-          cd "$PROJECT_DIR"
-          gradle wrapper --gradle-version 8.7
-
+          GRADLE_DIR=$(dirname $(find . -name "gradlew" | head -n 1))
+          echo "PROJECT_DIR=$GRADLE_DIR" >> $GITHUB_ENV
+          echo "Found gradlew in: $GRADLE_DIR"
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
-
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
         with:
           gradle-version: 8.7
-
       - name: Build APK
         run: |
           cd ${{ env.PROJECT_DIR }}
           chmod +x gradlew
           ./gradlew assembleDebug --stacktrace --no-daemon
-
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
