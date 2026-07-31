@@ -9,9 +9,11 @@ jobs:
       - name: Unzip if needed
         run: |
           ls -la
-          if [ -f "project.zip" ]; then
-            unzip -o project.zip
-            rm project.zip
+          ZIP=$(ls -1 project*.zip 2>/dev/null | head -1)
+          if [ -n "$ZIP" ]; then
+            echo "Found $ZIP, unzipping..."
+            unzip -o "$ZIP"
+            rm "$ZIP"
           fi
           ls -la
           ls -la app/ || true
