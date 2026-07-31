@@ -1,67 +1,42 @@
-name: Build APK
-
-on:
-  workflow_dispatch:
-
+name: build
+on: [push]
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install unzip, gradle, python3
-        run: sudo apt-get update && sudo apt-get install -y unzip gradle python3
-
-      - name: Extract project
-        run: unzip -q LuckyTapPH_Fixed_v2.zip
-
-      - name: Clean project structure and Strip Plugin Versions
+      - name: Unzip project if uploaded as zip
         run: |
-          # 1. Burahin ang mga duplicate (_1) files
-          find . -name "*_1*" -delete
-
-          # 2. Hahanapin ang app/build.gradle.kts at tatanggalin ang LAHAT ng plugin versions doon
-          python3 -c "
-          import glob, re
-
-          # Hanapin ang app/build.gradle.kts
-          files = glob.glob('**/app/build.gradle.kts', recursive=True)
-          for file_path in files:
-              print(f'Cleaning versions in: {file_path}')
-              with open(file_path, 'r') as f:
-                  content = f.read()
-
-              # Tatanggalin ang 'version \"...\"' o 'version(\"...\")' o 'version '\''...'\'''
-              cleaned = re.sub(r'version\s*[\(\'\"][^\)\'\"]+[\)\'\"]', '', content)
-
-              with open(file_path, 'w') as f:
-                  f.write(cleaned)
-          "
-
-          # 3. Kuhanin ang project path
-          GRADLE_DIR=$(dirname $(find . -name "gradlew" | head -n 1))
-          echo "PROJECT_DIR=$GRADLE_DIR" >> $GITHUB_ENV
+          if [ -f "project.zip" ]; then
+            unzip -o project.zip
+            rm project.zip
+            # if extracted creates LuckyTapPH folder, move contents to root
+            if [ -d "LuckyTapPH" ]; then
+              mv LuckyTapPH/*. 2>/dev/null || true
+              mv LuckyTapPH/.*. 2>/dev/null || true
+            fi
+          fi
+          ls -R | head -100
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
-          distribution: temurin
           java-version: '17'
+          distribution: 'temurin'
 
-      - name: Generate Gradle Wrapper 8.7
-        run: |
-          cd ${{ env.PROJECT_DIR }}
-          gradle wrapper --gradle-version 8.7
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: 8.7
 
-      - name: Build Debug APK with Detailed Logs
+      - name: Build APK
         run: |
-          cd ${{ env.PROJECT_DIR }}
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon --stacktrace --info
+         ./gradlew assembleDebug --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: LuckyTapPH-debug
-          path: "**/app/build/outputs/apk/debug/*.apk"
+          name: LuckyTapPH-APK
+          path: app/build/outputs/apk/debug/*.apk
