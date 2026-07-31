@@ -13,14 +13,29 @@ jobs:
             unzip -o project.zip
           fi
 
-      - name: Auto-Fix Compile SDK & Compose Version
+      - name: Auto-Patch Code and Configuration Errors
         run: |
           python3 -c "
           import glob, re, os
 
-          # 1. Ayusin ang Compose version sa 1.5.10
-          files = glob.glob('**/app/build.gradle.kts', recursive=True) + glob.glob('**/app/build.gradle', recursive=True)
-          for f_path in files:
+          # 1. Patch MainActivity.kt for missing tapsVal
+          kt_files = glob.glob('**/MainActivity.kt', recursive=True)
+          for kt in kt_files:
+              print(f'Patching code in: {kt}')
+              with open(kt, 'r') as f:
+                  code = f.read()
+              
+              # Kung walang tapsVal declaration, idagdag natin ito bilang variable
+              if 'tapsVal' in code and 'val tapsVal' not in code and 'var tapsVal' not in code:
+                  # Magdagdag ng global variable declaration sa loob ng class
+                  code = re.sub(r'(class MainActivity[^{]*\{)', r'\1\n    var tapsVal: Int = 0', code)
+              
+              with open(kt, 'w') as f:
+                  f.write(code)
+
+          # 2. Ayusin ang Compose version sa 1.5.10
+          gradle_files = glob.glob('**/app/build.gradle.kts', recursive=True) + glob.glob('**/app/build.gradle', recursive=True)
+          for f_path in gradle_files:
               print(f'Fixing Compose version in: {f_path}')
               with open(f_path, 'r') as f:
                   content = f.read()
@@ -28,7 +43,7 @@ jobs:
               with open(f_path, 'w') as f:
                   f.write(fixed)
 
-          # 2. Idagdag ang suppress warning sa gradle.properties
+          # 3. Idagdag ang suppress warning sa gradle.properties
           prop_files = glob.glob('**/gradle.properties', recursive=True)
           if prop_files:
               for p_path in prop_files:
@@ -36,8 +51,6 @@ jobs:
                   with open(p_path, 'a') as f:
                       f.write('\nandroid.suppressUnsupportedCompileSdk=35\n')
           else:
-              # Pag walang gradle.properties, gagawa tayo
-              print('Creating gradle.properties')
               with open('gradle.properties', 'w') as f:
                   f.write('android.suppressUnsupportedCompileSdk=35\n')
           "
