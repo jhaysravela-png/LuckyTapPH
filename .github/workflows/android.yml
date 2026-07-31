@@ -7,15 +7,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Project Directories
+      - name: Generate Complete App Structure
         run: |
-          mkdir -p app/src/main/java/com/jayson/cointap
-          mkdir -p app/src/main/res/layout
+          python3 -c "
+          import os, shutil
 
-      - name: Create Settings & Build Gradle Files
-        run: |
-          cat << 'EOF' > settings.gradle.kts
-          pluginManagement {
+          # 1. Directories
+          pkg_dir = 'app/src/main/java/com/jayson/cointap'
+          os.makedirs(pkg_dir, exist_ok=True)
+          os.makedirs('app/src/main/res/layout', exist_ok=True)
+
+          # 2. settings.gradle.kts
+          with open('settings.gradle.kts', 'w') as f:
+              f.write('''pluginManagement {
               repositories {
                   google()
                   mavenCentral()
@@ -29,33 +33,33 @@ jobs:
                   mavenCentral()
               }
           }
-          rootProject.name = "CoinTap"
-          include(":app")
-          EOF
+          rootProject.name = \"CoinTap\"
+          include(\":app\")''')
 
-          cat << 'EOF' > build.gradle.kts
-          plugins {
-              id("com.android.application") version "8.5.2" apply false
-              id("org.jetbrains.kotlin.android") version "1.9.22" apply false
-          }
-          EOF
+          # 3. Root build.gradle.kts
+          with open('build.gradle.kts', 'w') as f:
+              f.write('''plugins {
+              id(\"com.android.application\") version \"8.5.2\" apply false
+              id(\"org.jetbrains.kotlin.android\") version \"1.9.22\" apply false
+          }''')
 
-          cat << 'EOF' > app/build.gradle.kts
-          plugins {
-              id("com.android.application")
-              id("org.jetbrains.kotlin.android")
+          # 4. App build.gradle.kts
+          with open('app/build.gradle.kts', 'w') as f:
+              f.write('''plugins {
+              id(\"com.android.application\")
+              id(\"org.jetbrains.kotlin.android\")
           }
 
           android {
-              namespace = "com.jayson.cointap"
+              namespace = \"com.jayson.cointap\"
               compileSdk = 34
 
               defaultConfig {
-                  applicationId = "com.jayson.cointap"
+                  applicationId = \"com.jayson.cointap\"
                   minSdk = 24
                   targetSdk = 34
                   versionCode = 1
-                  versionName = "1.0"
+                  versionName = \"1.0\"
               }
 
               buildTypes {
@@ -69,96 +73,94 @@ jobs:
                   targetCompatibility = JavaVersion.VERSION_17
               }
               kotlinOptions {
-                  jvmTarget = "17"
+                  jvmTarget = \"17\"
               }
           }
 
           dependencies {
-              implementation("androidx.core:core-ktx:1.12.0")
-              implementation("androidx.appcompat:appcompat:1.6.1")
-              implementation("com.google.android.material:material:1.11.0")
-              implementation("androidx.constraintlayout:constraintlayout:2.1.4")
-          }
-          EOF
+              implementation(\"androidx.core:core-ktx:1.12.0\")
+              implementation(\"androidx.appcompat:appcompat:1.6.1\")
+              implementation(\"com.google.android.material:material:1.11.0\")
+              implementation(\"androidx.constraintlayout:constraintlayout:2.1.4\")
+          }''')
 
-      - name: Create Clean AndroidManifest.xml
-        run: |
-          cat << 'EOF' > app/src/main/AndroidManifest.xml
-          <?xml version="1.0" encoding="utf-8"?>
-          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+          # 5. AndroidManifest.xml
+          with open('app/src/main/AndroidManifest.xml', 'w') as f:
+              f.write('''<?xml version=\"1.0\" encoding=\"utf-8\"?>
+          <manifest xmlns:android=\"http://schemas.android.com/apk/res/android\">
               <application
-                  android:allowBackup="true"
-                  android:icon="@mipmap/ic_launcher"
-                  android:label="CoinTap"
-                  android:roundIcon="@mipmap/ic_launcher_round"
-                  android:supportsRtl="true"
-                  android:theme="@style/Theme.AppCompat.Light.DarkActionBar">
+                  android:allowBackup=\"true\"
+                  android:icon=\"@mipmap/ic_launcher\"
+                  android:label=\"CoinTap\"
+                  android:roundIcon=\"@mipmap/ic_launcher_round\"
+                  android:supportsRtl=\"true\"
+                  android:theme=\"@style/Theme.AppCompat.Light.DarkActionBar\">
                   <activity
-                      android:name=".MainActivity"
-                      android:exported="true">
+                      android:name=\".MainActivity\"
+                      android:exported=\"true\">
                       <intent-filter>
-                          <action android:name="android.intent.action.MAIN" />
-                          <category android:name="android.intent.category.LAUNCHER" />
+                          <action android:name=\"android.intent.action.MAIN\" />
+                          <category android:name=\"android.intent.category.LAUNCHER\" />
                       </intent-filter>
                   </activity>
               </application>
-          </manifest>
-          EOF
+          </manifest>''')
 
-      - name: Create Clean activity_main.xml
-        run: |
-          cat << 'EOF' > app/src/main/res/layout/activity_main.xml
-          <?xml version="1.0" encoding="utf-8"?>
-          <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-              android:layout_width="match_parent"
-              android:layout_height="match_parent"
-              android:orientation="vertical"
-              android:gravity="center"
-              android:padding="16dp">
+          # 6. activity_main.xml
+          with open('app/src/main/res/layout/activity_main.xml', 'w') as f:
+              f.write('''<?xml version=\"1.0\" encoding=\"utf-8\"?>
+          <LinearLayout xmlns:android=\"http://schemas.android.com/apk/res/android\"
+              android:layout_width=\"match_parent\"
+              android:layout_height=\"match_parent\"
+              android:orientation=\"vertical\"
+              android:gravity=\"center\"
+              android:padding=\"16dp\">
 
               <TextView
-                  android:id="@+id/timeTxt"
-                  android:layout_width="wrap_content"
-                  android:layout_height="wrap_content"
-                  android:text="Time: 30"
-                  android:textSize="24sp"
-                  android:layout_marginBottom="16dp" />
+                  android:id=\"@+id/timeTxt\"
+                  android:layout_width=\"wrap_content\"
+                  android:layout_height=\"wrap_content\"
+                  android:text=\"Time: 30\"
+                  android:textSize=\"24sp\"
+                  android:layout_marginBottom=\"16dp\" />
 
               <TextView
-                  android:id="@+id/scoreTxt"
-                  android:layout_width="wrap_content"
-                  android:layout_height="wrap_content"
-                  android:text="Coins: 0"
-                  android:textSize="28sp"
-                  android:textStyle="bold"
-                  android:layout_marginBottom="16dp" />
+                  android:id=\"@+id/scoreTxt\"
+                  android:layout_width=\"wrap_content\"
+                  android:layout_height=\"wrap_content\"
+                  android:text=\"Coins: 0\"
+                  android:textSize=\"28sp\"
+                  android:textStyle=\"bold\"
+                  android:layout_marginBottom=\"16dp\" />
 
               <TextView
-                  android:id="@+id/msgTxt"
-                  android:layout_width="wrap_content"
-                  android:layout_height="wrap_content"
-                  android:text="Tap Start/Coins!"
-                  android:textSize="18sp"
-                  android:layout_marginBottom="32dp" />
+                  android:id=\"@+id/msgTxt\"
+                  android:layout_width=\"wrap_content\"
+                  android:layout_height=\"wrap_content\"
+                  android:text=\"Tap Start/Coins!\"
+                  android:textSize=\"18sp\"
+                  android:layout_marginBottom=\"32dp\" />
 
               <Button
-                  android:id="@+id/tapBtn"
-                  android:layout_width="wrap_content"
-                  android:layout_height="wrap_content"
-                  android:text="TAP ME!"
-                  android:padding="20dp"
-                  android:textSize="20sp" />
+                  android:id=\"@+id/tapBtn\"
+                  android:layout_width=\"wrap_content\"
+                  android:layout_height=\"wrap_content\"
+                  android:text=\"TAP ME!\"
+                  android:padding=\"20dp\"
+                  android:textSize=\"20sp\" />
 
-          </LinearLayout>
-          EOF
+          </LinearLayout>''')
 
-      - name: Move MainActivity & Setup Properties
-        run: |
-          if [ -f "MainActivity.kt" ]; then
-            mv MainActivity.kt app/src/main/java/com/jayson/cointap/MainActivity.kt
-          fi
-          echo "android.useAndroidX=true" > gradle.properties
-          echo "android.suppressUnsupportedCompileSdk=35" >> gradle.properties
+          # 7. Move MainActivity.kt
+          if os.path.exists('MainActivity.kt'):
+              shutil.move('MainActivity.kt', f'{pkg_dir}/MainActivity.kt')
+
+          # 8. gradle.properties
+          with open('gradle.properties', 'w') as f:
+              f.write('android.useAndroidX=true\\nandroid.suppressUnsupportedCompileSdk=35\\n')
+
+          print('Done!')
+          "
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
