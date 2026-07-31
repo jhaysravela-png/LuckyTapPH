@@ -27,12 +27,13 @@ jobs:
         working-directory: ./LuckyTapPH
         run: gradle wrapper --gradle-version 8.7
 
-      - name: Build Debug APK (Suppress Compatibility Check)
+      - name: Build Debug APK (Suppress Compatibility Check & Detailed Logs)
         working-directory: ./LuckyTapPH
         run: |
           chmod +x gradlew
           # Pwersahang balewalain ang Kotlin/Compose version check
-          ./gradlew assembleDebug -Pandroid.experimental.suppressKotlinVersionCompatibilityCheck=true --no-daemon
+          # Magdagdag ng --stacktrace para sa detalyadong error logs
+          ./gradlew assembleDebug -Pandroid.experimental.suppressKotlinVersionCompatibilityCheck=true --no-daemon --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
