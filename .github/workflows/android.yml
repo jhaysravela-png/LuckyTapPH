@@ -11,26 +11,20 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install unzip and gradle
-        run: sudo apt-get update && sudo apt-get install -y unzip gradle python3
+        run: sudo apt-get update && sudo apt-get install -y unzip gradle
 
       - name: Extract project
-        run: unzip -q LuckyTapPH_Fixed.zip
+        run: unzip -q LuckyTapPH_Fixed_v2.zip
 
-      - name: Force Clean Plugin Versions
+      - name: Clean duplicates and auto-detect directory
         run: |
-          python3 -c "
-          import re
-          path = 'LuckyTapPH/app/build.gradle.kts'
-          with open(path, 'r') as f:
-              content = f.read()
-          
-          # Tatanggalin ang version '...' o version(...) sa kahit anong plugin line
-          cleaned = re.sub(r'version\s+[\"\'][^\"\']+[\"\']', '', content)
-          cleaned = re.sub(r'version\s*\([^\)]*\)', '', cleaned)
-          
-          with open(path, 'w') as f:
-              f.write(cleaned)
-          "
+          # 1. Burahin ang mga duplicate (_1) files
+          find . -name "*_1*" -delete
+
+          # 2. Kusang hahanapin kung saang folder naroon ang gradlew
+          GRADLE_DIR=$(dirname $(find . -name "gradlew" | head -n 1))
+          echo "PROJECT_DIR=$GRADLE_DIR" >> $GITHUB_ENV
+          echo "Nahanap ang project sa folder na: $GRADLE_DIR"
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -39,12 +33,13 @@ jobs:
           java-version: '17'
 
       - name: Generate Gradle Wrapper 8.7
-        working-directory: ./LuckyTapPH
-        run: gradle wrapper --gradle-version 8.7
+        run: |
+          cd ${{ env.PROJECT_DIR }}
+          gradle wrapper --gradle-version 8.7
 
       - name: Build Debug APK
-        working-directory: ./LuckyTapPH
         run: |
+          cd ${{ env.PROJECT_DIR }}
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon
 
@@ -52,4 +47,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: LuckyTapPH-debug
-          path: LuckyTapPH/app/build/outputs/apk/debug/*.apk
+          path: "**/app/build/outputs/apk/debug/*.apk"
