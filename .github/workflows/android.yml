@@ -1,51 +1,60 @@
 name: build
 on: [push, workflow_dispatch]
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Fix project structure
+      - name: Auto-Fix Unzipped Folder Structure
         run: |
-          mkdir -p app/src/main/java/com/jayson/cointap
-          mkdir -p app/src/main/res/layout
-          mkdir -p gradle/wrapper
-          # Move files to correct place
-          mv AndroidManifest.xml app/src/main/ || true
-          mv MainActivity.kt app/src/main/java/com/jayson/cointap/ || true
-          mv activity_main.xml app/src/main/res/layout/ || true
-          # Handle both names
-          if [ -f "build.gradle.kts" ]; then
-            # Check if it's app or root build file
-            if grep -q "application" build.gradle.kts; then
-              mv build.gradle.kts app/ || true
-            fi
-          fi
-          mv gradle-wrapper.properties gradle/wrapper/ || true
-          mv gradlew . || true
-          mv gradlew.bat . || true
-          # Create missing files if needed
-          echo 'include(":app")' > settings.gradle.kts
-          cat > build.gradle.kts << 'EOF'
-          plugins { id("com.android.application") version "8.2.2" apply false
-           id("org.jetbrains.kotlin.android") version "1.9.22" apply false }
-          EOF
-          cat > gradle.properties << 'EOF'
-          org.gradle.jvmargs=-Xmx2048m
-          android.useAndroidX=true
-          android.suppressUnsupportedCompileSdk=35
-          EOF
-          cat > gradle/wrapper/gradle-wrapper.properties << 'EOF'
-          distributionBase=GRADLE_USER_HOME
-          distributionPath=wrapper/dists
-          distributionUrl=https\://services.gradle.org/distributions/gradle-8.7-bin.zip
-          zipStoreBase=GRADLE_USER_HOME
-          zipStorePath=wrapper/dists
-          EOF
-          # Fix MainActivity package path if needed
-          ls -R
-          
+          python3 -c "
+          import os, shutil, glob
+
+          # Create standard Android directories if they don't exist
+          os.makedirs('app/src/main/java/com/LuckyTapPH/ph', exist_ok=True)
+          os.makedirs('app/src/main/res/layout', exist_ok=True)
+
+          # Move Manifest to app/src/main/
+          if os.path.exists('AndroidManifest.xml'):
+              shutil.move('AndroidManifest.xml', 'app/src/main/AndroidManifest.xml')
+
+          # Move MainActivity.kt to correct package folder
+          if os.path.exists('MainActivity.kt'):
+              shutil.move('MainActivity.kt', 'app/src/main/java/com/LuckyTapPH/ph/MainActivity.kt')
+
+          # Move layout xml to res/layout
+          if os.path.exists('activity_main.xml'):
+              shutil.move('activity_main.xml', 'app/src/main/res/layout/activity_main.xml')
+
+          # Move build.gradle.kts if it is in root
+          if os.path.exists('build.gradle.kts') and not os.path.exists('app/build.gradle.kts'):
+              shutil.copy('build.gradle.kts', 'app/build.gradle.kts')
+
+          print('Folder structure successfully organized!')
+          "
+
+      - name: Auto-Patch Code Mismatch
+        run: |
+          python3 -c "
+          import glob, re
+
+          # Patch tapsVal if missing in MainActivity
+          kt_files = glob.glob('**/MainActivity.kt', recursive=True)
+          for kt in kt_files:
+              with open(kt, 'r') as f:
+                  code = f.read()
+              if 'tapsVal' in code and 'val tapsVal' not in code and 'var tapsVal' not in code:
+                  code = re.sub(r'(class MainActivity[^{]*\{)', r'\1\n    var tapsVal: Int = 0', code)
+              with open(kt, 'w') as f:
+                  f.write(code)
+
+          # Suppress SDK 35 Warning
+          with open('gradle.properties', 'a') as f:
+              f.write('\nandroid.suppressUnsupportedCompileSdk=35\n')
+          "
+
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -57,11 +66,14 @@ jobs:
         with:
           gradle-version: 8.7
 
-      - name: Build APK
-        run: gradle assembleDebug --stacktrace
+      - name: Generate Wrapper & Build APK
+        run: |
+          gradle wrapper --gradle-version 8.7
+          chmod +x gradlew
+          ./gradlew assembleDebug --stacktrace --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: CoinTap-APK
-          path: app/build/outputs/apk/debug/*.apk
+          name: LuckyTapPH-APK
+          path: "**/app/build/outputs/apk/debug/*.apk"
