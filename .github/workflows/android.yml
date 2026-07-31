@@ -7,16 +7,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Generate Complete Android Project Structure
+      - name: Generate Complete Android Project Structure (CoinTap)
         run: |
           python3 -c "
           import os, shutil, glob, re
 
-          # 1. Create standard Android directory tree
-          os.makedirs('app/src/main/java/com/LuckyTapPH/ph', exist_ok=True)
+          # 1. Create directory tree for CoinTap
+          os.makedirs('app/src/main/java/com/CoinTap/ph', exist_ok=True)
           os.makedirs('app/src/main/res/layout', exist_ok=True)
 
-          # 2. Setup settings.gradle.kts with Plugin Repositories
+          # 2. Setup settings.gradle.kts
           settings_content = '''
           pluginManagement {
               repositories {
@@ -32,7 +32,7 @@ jobs:
                   mavenCentral()
               }
           }
-          rootProject.name = \"LuckyTapPH\"
+          rootProject.name = \"CoinTap\"
           include(\":app\")
           '''
           with open('settings.gradle.kts', 'w') as f:
@@ -48,7 +48,7 @@ jobs:
           with open('build.gradle.kts', 'w') as f:
               f.write(root_build)
 
-          # 4. Setup app/build.gradle.kts
+          # 4. Setup app/build.gradle.kts with CoinTap namespace
           app_build = '''
           plugins {
               id(\"com.android.application\")
@@ -56,11 +56,11 @@ jobs:
           }
 
           android {
-              namespace = \"com.LuckyTapPH.ph\"
+              namespace = \"com.CoinTap.ph\"
               compileSdk = 34
 
               defaultConfig {
-                  applicationId = \"com.LuckyTapPH.ph\"
+                  applicationId = \"com.CoinTap.ph\"
                   minSdk = 24
                   targetSdk = 34
                   versionCode = 1
@@ -102,23 +102,29 @@ jobs:
           with open('app/build.gradle.kts', 'w') as f:
               f.write(app_build)
 
-          # 5. Move code files to proper places
+          # 5. Move code files to CoinTap paths
           if os.path.exists('AndroidManifest.xml'):
               shutil.move('AndroidManifest.xml', 'app/src/main/AndroidManifest.xml')
 
           if os.path.exists('MainActivity.kt'):
-              shutil.move('MainActivity.kt', 'app/src/main/java/com/LuckyTapPH/ph/MainActivity.kt')
+              shutil.move('MainActivity.kt', 'app/src/main/java/com/CoinTap/ph/MainActivity.kt')
 
           if os.path.exists('activity_main.xml'):
               shutil.move('activity_main.xml', 'app/src/main/res/layout/activity_main.xml')
 
-          # 6. Patch MainActivity.kt for tapsVal missing declaration
+          # 6. Auto-Patch MainActivity.kt (Fix package & tapsVal)
           kt_files = glob.glob('**/MainActivity.kt', recursive=True)
           for kt in kt_files:
               with open(kt, 'r') as f:
                   code = f.read()
+              
+              # Fix package declaration if needed
+              code = re.sub(r'package\s+com\.LuckyTapPH\.ph', 'package com.CoinTap.ph', code)
+
+              # Patch tapsVal if missing
               if 'tapsVal' in code and 'val tapsVal' not in code and 'var tapsVal' not in code:
                   code = re.sub(r'(class MainActivity[^{]*\{)', r'\1\n    var tapsVal: Int = 0', code)
+
               with open(kt, 'w') as f:
                   f.write(code)
 
@@ -126,7 +132,7 @@ jobs:
           with open('gradle.properties', 'w') as f:
               f.write('android.useAndroidX=true\nandroid.suppressUnsupportedCompileSdk=35\n')
 
-          print('Project fully restructured and configured!')
+          print('CoinTap Project successfully configured!')
           "
 
       - name: Set up JDK 17
@@ -149,5 +155,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: LuckyTapPH-APK
+          name: CoinTap-APK
           path: "app/build/outputs/apk/debug/*.apk"
