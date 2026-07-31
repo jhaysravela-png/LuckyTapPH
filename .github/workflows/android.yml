@@ -107,7 +107,179 @@ jobs:
           with open('gradle.properties', 'w') as f:
               f.write('android.useAndroidX=true\nandroid.suppressUnsupportedCompileSdk=35\n')
 
-          print('CoinTap successfully configured for com.jayson.cointap!')
+name: build
+on: [push, workflow_dispatch]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Complete Android Project (com.jayson.cointap)
+        run: |
+          python3 -c "
+          import os, shutil
+
+          # 1. Create directories
+          pkg_dir = 'app/src/main/java/com/jayson/cointap'
+          os.makedirs(pkg_dir, exist_ok=True)
+          os.makedirs('app/src/main/res/layout', exist_ok=True)
+
+          # 2. Setup settings.gradle.kts
+          settings_content = '''
+          pluginManagement {
+              repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
+          }
+          dependencyResolutionManagement {
+              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+          rootProject.name = \"CoinTap\"
+          include(\":app\")
+          '''
+          with open('settings.gradle.kts', 'w') as f:
+              f.write(settings_content)
+
+          # 3. Setup Root build.gradle.kts
+          root_build = '''
+          plugins {
+              id(\"com.android.application\") version \"8.5.2\" apply false
+              id(\"org.jetbrains.kotlin.android\") version \"1.9.22\" apply false
+          }
+          '''
+          with open('build.gradle.kts', 'w') as f:
+              f.write(root_build)
+
+          # 4. Setup app/build.gradle.kts
+          app_build = '''
+          plugins {
+              id(\"com.android.application\")
+              id(\"org.jetbrains.kotlin.android\")
+          }
+
+          android {
+              namespace = \"com.jayson.cointap\"
+              compileSdk = 34
+
+              defaultConfig {
+                  applicationId = \"com.jayson.cointap\"
+                  minSdk = 24
+                  targetSdk = 34
+                  versionCode = 1
+                  versionName = \"1.0\"
+              }
+
+              buildTypes {
+                  release {
+                      isMinifyEnabled = false
+                  }
+              }
+
+              compileOptions {
+                  sourceCompatibility = JavaVersion.VERSION_17
+                  targetCompatibility = JavaVersion.VERSION_17
+              }
+              kotlinOptions {
+                  jvmTarget = \"17\"
+              }
+          }
+
+          dependencies {
+              implementation(\"androidx.core:core-ktx:1.12.0\")
+              implementation(\"androidx.appcompat:appcompat:1.6.1\")
+              implementation(\"com.google.android.material:material:1.11.0\")
+              implementation(\"androidx.constraintlayout:constraintlayout:2.1.4\")
+          }
+          '''
+          with open('app/build.gradle.kts', 'w') as f:
+              f.write(app_build)
+
+          # 5. Ensure valid AndroidManifest.xml
+          manifest_content = '''<?xml version=\"1.0\" encoding=\"utf-8\"?>
+          <manifest xmlns:android=\"http://schemas.android.com/apk/res/android\">
+              <application
+                  android:allowBackup=\"true\"
+                  android:icon=\"@mipmap/ic_launcher\"
+                  android:label=\"CoinTap\"
+                  android:roundIcon=\"@mipmap/ic_launcher_round\"
+                  android:supportsRtl=\"true\"
+                  android:theme=\"@style/Theme.AppCompat.Light.DarkActionBar\">
+                  <activity
+                      android:name=\".MainActivity\"
+                      android:exported=\"true\">
+                      <intent-filter>
+                          <action android:name=\"android.intent.action.MAIN\" />
+                          <category android:name=\"android.intent.category.LAUNCHER\" />
+                      </intent-filter>
+                  </activity>
+              </application>
+          </manifest>'''
+          with open('app/src/main/AndroidManifest.xml', 'w') as f:
+              f.write(manifest_content)
+
+          # 6. Ensure valid activity_main.xml matching code IDs
+          layout_content = '''<?xml version=\"1.0\" encoding=\"utf-8\"?>
+          <LinearLayout xmlns:android=\"http://schemas.android.com/apk/res/android\"
+              android:layout_width=\"match_parent\"
+              android:layout_height=\"match_parent\"
+              android:orientation=\"vertical\"
+              android:gravity=\"center\"
+              android:padding=\"16dp\">
+
+              <TextView
+                  android:id=\"@+id/timeTxt\"
+                  android:layout_width=\"wrap_content\"
+                  android:layout_height=\"wrap_content\"
+                  android:text=\"Time: 30\"
+                  android:textSize=\"24sp\"
+                  android:layout_marginBottom=\"16dp\" />
+
+              <TextView
+                  android:id=\"@+id/scoreTxt\"
+                  android:layout_width=\"wrap_content\"
+                  android:layout_height=\"wrap_content\"
+                  android:text=\"Coins: 0\"
+                  android:textSize=\"28sp\"
+                  android:textStyle=\"bold\"
+                  android:layout_marginBottom=\"16dp\" />
+
+              <TextView
+                  android:id=\"@+id/msgTxt\"
+                  android:layout_width=\"wrap_content\"
+                  android:layout_height=\"wrap_content\"
+                  android:text=\"Tap Start/Coins!\"
+                  android:textSize=\"18sp\"
+                  android:layout_marginBottom=\"32dp\" />
+
+              <Button
+                  android:id=\"@+id/tapBtn\"
+                  android:layout_width=\"wrap_content\"
+                  android:layout_height=\"wrap_content\"
+                  android:text=\"TAP ME!\"
+                  android:padding=\"20dp\"
+                  android:textSize=\"20sp\" />
+
+          </LinearLayout>'''
+          with open('app/src/main/res/layout/activity_main.xml', 'w') as f:
+              f.write(layout_content)
+
+          # 7. Move MainActivity.kt
+          if os.path.exists('MainActivity.kt'):
+              shutil.move('MainActivity.kt', f'{pkg_dir}/MainActivity.kt')
+
+          # 8. Configure gradle.properties
+          with open('gradle.properties', 'w') as f:
+              f.write('android.useAndroidX=true\nandroid.suppressUnsupportedCompileSdk=35\n')
+
+          print('CoinTap manifest and layout generated cleanly!')
           "
 
       - name: Set up JDK 17
